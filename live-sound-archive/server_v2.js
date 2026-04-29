@@ -15,7 +15,7 @@ const fs      = require("fs");
 // ========== 설정 (여기만 수정) ==========
 const PORT    = 3000;
 const API_KEY = "your-secret-key";          // watcher.py와 동일하게
-const BASE_URL = "https://your-server.com"; // 실제 서버 도메인
+const BASE_URL = "https://test-0083.onrender.com"; // 실제 서버 도메인
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const CARDS_DIR  = path.join(__dirname, "public", "cards");
 // ========================================
