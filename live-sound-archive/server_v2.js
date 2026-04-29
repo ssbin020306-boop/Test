@@ -15,7 +15,7 @@ const fs      = require("fs");
 // ========== 설정 (여기만 수정) ==========
 const PORT    = 3000;
 const API_KEY = "your-secret-key";          // watcher.py와 동일하게
-const BASE_URL = "https://test-0083.onrender.com"; // 실제 서버 도메인
+const BASE_URL = "https://your-server.com"; // 실제 서버 도메인
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const CARDS_DIR  = path.join(__dirname, "public", "cards");
 // ========================================
@@ -160,7 +160,7 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
 .tape.r{left:auto;right:-7px;transform:rotate(2deg);}
 .hint{position:absolute;bottom:10px;right:12px;font-size:.5rem;color:rgba(255,255,255,.18);letter-spacing:.08em;z-index:3;}
 /* BACK */
-.back{transform:rotateY(180deg);display:flex;flex-direction:column;}
+.back{transform:rotateY(180deg);display:flex;flex-direction:column;cursor:default;}
 .bk-hdr{padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;}
 .bk-ttl{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.15em;color:var(--accent2);}
 .bk-nm{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;line-height:1;}
@@ -277,6 +277,7 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function flip(){document.getElementById("card").classList.toggle("flipped");}
+document.querySelector(".back").addEventListener("click",function(e){e.stopPropagation();});
 const au=document.getElementById("au"),pb=document.getElementById("playbtn"),pgf=document.getElementById("pgf"),ct=document.getElementById("ct"),dt=document.getElementById("dt");
 function fmt(s){if(!s||isNaN(s))return"0:00";return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0");}
 function mt(){dt.textContent=fmt(au.duration);}
