@@ -15,7 +15,7 @@ const fs      = require("fs");
 // ========== 설정 (여기만 수정) ==========
 const PORT    = 3000;
 const API_KEY = "your-secret-key";          // watcher.py와 동일하게
-const BASE_URL = "https://test-0083.onrender.com"; // 실제 서버 도메인
+const BASE_URL = "https://your-server.com"; // 실제 서버 도메인
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const CARDS_DIR  = path.join(__dirname, "public", "cards");
 // ========================================
@@ -175,7 +175,7 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
 .pbtn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
 .pbtn:hover{background:var(--accent);color:#000;box-shadow:0 0 14px var(--accent);}
 .pw{flex:1;}
-.pb{height:3px;background:rgba(255,255,255,.1);border-radius:2px;cursor:pointer;}
+.progbar{height:3px;background:rgba(255,255,255,.1);border-radius:2px;cursor:pointer;}
 .pf{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .1s;}
 .pt{display:flex;justify-content:space-between;font-size:.54rem;color:var(--muted);margin-top:3px;}
 .qrs{padding:7px 16px 12px;display:flex;align-items:center;gap:10px;border-top:1px solid rgba(255,255,255,.06);}
@@ -248,21 +248,21 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
         <div class="row"><div class="lbl">녹음</div><div class="val">${new Date(card.createdAt).toLocaleString("ko-KR")}</div></div>
         <div class="row"><div class="lbl">SESSION</div><div class="val">LIVE SOUND ARCHIVE</div></div>
       </div>
-      <div class="aud">
+      <div class="aud" onclick="event.stopPropagation()">
         <div class="aud-lbl">PLAY TRACK</div>
         <div class="player">
-          <button class="pbtn" id="pb" onclick="tp(event)">
+          <button class="pbtn" id="playbtn" onclick="tp(event)">
             <svg width="12" height="14" viewBox="0 0 12 14"><polygon points="0,0 12,7 0,14" fill="currentColor"/></svg>
           </button>
           <div class="pw">
-            <div class="pb" id="pgb" onclick="sk(event)"><div class="pf" id="pgf"></div></div>
+            <div class="progbar" id="pgb" onclick="sk(event)"><div class="pf" id="pgf"></div></div>
             <div class="pt"><span id="ct">0:00</span><span id="dt">--:--</span></div>
           </div>
         </div>
         <audio id="au" src="/uploads/${card.filename}" preload="metadata"
           ontimeupdate="up()" onended="rs()" onloadedmetadata="mt()"></audio>
       </div>
-      <div class="qrs">
+      <div class="qrs" onclick="event.stopPropagation()">
         <div class="qrb" id="qrb"></div>
         <div>
           <div class="qrt">QR 스캔 → 이 카드 열림</div>
@@ -272,12 +272,12 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
     </div>
   </div>
 </div>
-<div class="msg">↑ 탭해서 뒤집기</div>
+<div class="msg">앞면 탭 → 뒤집기 · ↩ FLIP 버튼 → 앞으로</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function flip(){document.getElementById("card").classList.toggle("flipped");}
-const au=document.getElementById("au"),pb=document.getElementById("pb"),pgf=document.getElementById("pgf"),ct=document.getElementById("ct"),dt=document.getElementById("dt");
+const au=document.getElementById("au"),pb=document.getElementById("playbtn"),pgf=document.getElementById("pgf"),ct=document.getElementById("ct"),dt=document.getElementById("dt");
 function fmt(s){if(!s||isNaN(s))return"0:00";return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0");}
 function mt(){dt.textContent=fmt(au.duration);}
 function up(){if(au.duration)pgf.style.width=(au.currentTime/au.duration*100)+"%";ct.textContent=fmt(au.currentTime);}
