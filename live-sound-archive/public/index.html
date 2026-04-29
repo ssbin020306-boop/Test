@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVE SOUND ARCHIVE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Unbounded:wght@200;400;700&display=swap');
+
+  :root {
+    --bg: #080808;
+    --surface: #111;
+    --border: #222;
+    --accent: #c8ff00;
+    --accent2: #ff3c00;
+    --text: #f0f0f0;
+    --muted: #555;
+    --playing-glow: 0 0 30px rgba(200,255,0,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 2.5rem 3rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 3rem;
+    width: 80px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .logo {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .dot.live {
+    background: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    min-height: calc(100vh - 90px);
+  }
+
+  /* LEFT: Now Playing */
+  .now-playing {
+    padding: 3rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .track-title {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 200;
+    font-size: clamp(1.8rem, 4vw, 3.5rem);
+    line-height: 1.1;
+    word-break: break-all;
+    min-height: 4rem;
+    color: var(--text);
+    transition: color 0.3s;
+  }
+
+  .track-title.has-track { color: var(--accent); }
+
+  /* Waveform visualizer (CSS bars) */
+  .visualizer {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 60px;
+    opacity: 0.2;
+    transition: opacity 0.4s;
+  }
+  .visualizer.active { opacity: 1; }
+  .visualizer .bar {
+    width: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: none;
+    height: 4px;
+    transition: height 0.1s;
+  }
+  .visualizer.active .bar { animation: wave var(--d, 0.8s) ease-in-out infinite alternate; }
+  @keyframes wave { from { height: 4px; } to { height: var(--h, 40px); } }
+
+  /* Audio player */
+  .player-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  audio {
+    width: 100%;
+    height: 40px;
+    filter: invert(1) hue-rotate(180deg);
+    opacity: 0.8;
+  }
+
+  .track-meta {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .meta-item span { color: var(--text); }
+
+  /* New track notification */
+  .toast {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--accent);
+    color: #000;
+    padding: 0.8rem 1.2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transform: translateY(-120%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); }
+
+  /* RIGHT: Archive list */
+  .archive {
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 90px);
+  }
+
+  .archive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .track-count {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 0.8rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .track-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background: var(--accent);
+    opacity: 0.05;
+    transition: width 0.3s;
+  }
+
+  .track-item:hover { border-color: var(--border); }
+  .track-item:hover::before { width: 100%; }
+
+  .track-item.active {
+    border-color: var(--accent);
+    box-shadow: var(--playing-glow);
+  }
+  .track-item.active::before { width: 100%; opacity: 0.08; }
+
+  .track-num {
+    font-size: 0.6rem;
+    color: var(--muted);
+    width: 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .track-item.active .track-num { color: var(--accent); }
+
+  .track-info { flex: 1; min-width: 0; }
+
+  .track-name {
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .track-item.active .track-name { color: var(--accent); }
+
+  .track-size {
+    font-size: 0.6rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .play-indicator {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .play-indicator svg { opacity: 0; transition: opacity 0.2s; }
+  .track-item.active .play-indicator svg { opacity: 1; }
+
+  /* NEW badge */
+  .new-badge {
+    font-size: 0.55rem;
+    background: var(--accent2);
+    color: #fff;
+    padding: 1px 5px;
+    letter-spacing: 0.05em;
+    animation: fadein 0.5s ease;
+  }
+  @keyframes fadein { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 2;
+  }
+
+  .empty-state .big { font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.3; }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .now-playing { border-right: none; border-bottom: 1px solid var(--border); }
+    .archive { max-height: 50vh; }
+    header { padding: 1.5rem; }
+    .now-playing { padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">LIVE SOUND ARCHIVE</div>
+  <div class="status-pill">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">연결 중...</span>
+  </div>
+</header>
+
+<div class="main">
+  <section class="now-playing">
+    <div class="section-label">NOW PLAYING</div>
+    <div class="track-title" id="nowTitle">대기 중</div>
+
+    <div class="visualizer" id="visualizer">
+      <!-- JS로 bars 생성 -->
+    </div>
+
+    <div class="player-section">
+      <audio id="audioPlayer" controls preload="none"></audio>
+      <div class="track-meta">
+        <div class="meta-item">FORMAT <span id="metaFormat">—</span></div>
+        <div class="meta-item">SIZE <span id="metaSize">—</span></div>
+        <div class="meta-item">REC <span id="metaTime">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="archive">
+    <div class="archive-header">
+      <div class="section-label">ARCHIVE</div>
+      <div class="track-count" id="trackCount">0 TRACKS</div>
+    </div>
+    <div id="trackList">
+      <div class="empty-state">
+        <span class="big">◎</span>
+        녹음 대기 중...<br>
+        Ableton에서 녹음이 완료되면<br>
+        자동으로 여기에 나타납니다.
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast">🎵 새 트랙 도착</div>
+
+<script>
+// ========== 설정 ==========
+const WS_URL = "wss://your-server.com"; // 서버 주소로 변경
+// ==========================
+
+let tracks = [];
+let currentIndex = -1;
+const audio = document.getElementById("audioPlayer");
+
+// Visualizer bars 생성
+const viz = document.getElementById("visualizer");
+const heights = [20,35,55,40,60,30,50,45,25,55,38,62,28,48,33,57,42,25,50,36,60,22,45,52,30];
+heights.forEach((h, i) => {
+  const bar = document.createElement("div");
+  bar.className = "bar";
+  bar.style.setProperty("--h", h + "px");
+  bar.style.setProperty("--d", (0.4 + Math.random() * 0.6).toFixed(2) + "s");
+  bar.style.animationDelay = (i * 0.03) + "s";
+  viz.appendChild(bar);
+});
+
+// WebSocket 연결
+function connect() {
+  const ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    document.getElementById("statusDot").classList.add("live");
+    document.getElementById("statusText").textContent = "실시간 연결됨";
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "init") {
+      tracks = msg.tracks;
+      renderList();
+    } else if (msg.type === "new_track") {
+      tracks.unshift(msg.track);
+      renderList(msg.track.filename);
+      showToast(`🎵 ${msg.track.filename}`);
+      // 자동 재생
+      playTrack(0);
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById("statusDot").classList.remove("live");
+    document.getElementById("statusText").textContent = "재연결 중...";
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function renderList(newFilename = null) {
+  const list = document.getElementById("trackList");
+  document.getElementById("trackCount").textContent = tracks.length + " TRACKS";
+
+  if (tracks.length === 0) {
+    list.innerHTML = `<div class="empty-state"><span class="big">◎</span>녹음 대기 중...<br>Ableton에서 녹음이 완료되면<br>자동으로 여기에 나타납니다.</div>`;
+    return;
+  }
+
+  list.innerHTML = tracks.map((t, i) => `
+    <div class="track-item ${i === currentIndex ? 'active' : ''}" onclick="playTrack(${i})">
+      <div class="track-num">${String(tracks.length - i).padStart(2,'0')}</div>
+      <div class="track-info">
+        <div class="track-name">${cleanName(t.filename)}</div>
+        <div class="track-size">${formatSize(t.size)} · ${formatExt(t.filename)}</div>
+      </div>
+      ${t.filename === newFilename ? '<div class="new-badge">NEW</div>' : ''}
+      <div class="play-indicator">
+        <svg width="10" height="10" viewBox="0 0 10 10"><polygon points="0,0 10,5 0,10" fill="#c8ff00"/></svg>
+      </div>
+    </div>
+  `).join("");
+}
+
+function playTrack(index) {
+  if (index < 0 || index >= tracks.length) return;
+  currentIndex = index;
+  const t = tracks[index];
+
+  audio.src = t.url;
+  audio.play().catch(() => {});
+
+  document.getElementById("nowTitle").textContent = cleanName(t.filename);
+  document.getElementById("nowTitle").classList.add("has-track");
+  document.getElementById("metaFormat").textContent = formatExt(t.filename);
+  document.getElementById("metaSize").textContent = formatSize(t.size);
+  document.getElementById("metaTime").textContent = new Date(t.createdAt).toLocaleTimeString("ko-KR");
+
+  renderList();
+}
+
+audio.addEventListener("play", () => viz.classList.add("active"));
+audio.addEventListener("pause", () => viz.classList.remove("active"));
+audio.addEventListener("ended", () => {
+  viz.classList.remove("active");
+  // 다음 트랙 자동 재생
+  if (currentIndex < tracks.length - 1) playTrack(currentIndex + 1);
+});
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function cleanName(filename) {
+  return filename.replace(/^\d+_/, "").replace(/\.[^.]+$/, "").replace(/_/g, " ");
+}
+function formatSize(bytes) {
+  if (bytes > 1024*1024) return (bytes/1024/1024).toFixed(1) + " MB";
+  return (bytes/1024).toFixed(0) + " KB";
+}
+function formatExt(filename) {
+  return filename.split(".").pop().toUpperCase();
+}
+
+connect();
+</script>
+</body>
+</html>

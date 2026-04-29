@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVE SOUND ARCHIVE — 현장 디스플레이</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06080f;
+  --pink: #ff2d78;
+  --cyan: #00f5ff;
+  --yellow: #ffe600;
+  --green: #39ff14;
+  --text: #f0f0f0;
+  --muted: #445;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* scanlines */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,245,255,.01) 3px, rgba(0,245,255,.01) 4px);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── STANDBY ── */
+#standby {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 24px; text-align: center;
+}
+
+.logo-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(3rem, 10vw, 7rem);
+  letter-spacing: 0.2em;
+  background: linear-gradient(135deg, var(--cyan), var(--pink));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; line-height: 1;
+}
+
+.logo-sub {
+  font-size: clamp(0.7rem, 2vw, 1rem);
+  letter-spacing: 0.35em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.waiting-text {
+  font-size: clamp(0.8rem, 2vw, 1.1rem);
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 10px;
+}
+
+.dot-anim {
+  display: flex; gap: 6px;
+}
+.dot-anim span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--pink);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+.dot-anim span:nth-child(2) { animation-delay: .2s; }
+.dot-anim span:nth-child(3) { animation-delay: .4s; }
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: .2; transform: scale(.8); }
+  40% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── QR 팝업 ── */
+#qr-display {
+  display: none;
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(6, 8, 15, 0.96);
+  align-items: center; justify-content: center;
+  flex-direction: column;
+  gap: 0;
+}
+
+#qr-display.show {
+  display: flex;
+  animation: fadeIn .5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.qr-card {
+  position: relative;
+  background: #0d1117;
+  border-radius: 24px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 520px;
+  width: 90%;
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+/* animated border */
+.qr-card::before {
+  content: '';
+  position: absolute; inset: -1px;
+  border-radius: 25px;
+  background: linear-gradient(135deg, var(--pink), transparent 40%, var(--cyan) 60%, transparent);
+  background-size: 300% 300%;
+  animation: bs 3s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 1.5px;
+}
+@keyframes bs {
+  0%,100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.new-badge {
+  display: inline-block;
+  font-size: .7rem;
+  letter-spacing: .15em;
+  color: #000;
+  background: var(--green);
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.qr-dj-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: .08em;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 3px 3px 0 var(--pink), -1px -1px 0 var(--cyan);
+  margin-bottom: 6px;
+}
+
+.qr-track {
+  font-size: clamp(.7rem, 2vw, .9rem);
+  color: var(--cyan);
+  letter-spacing: .1em;
+  margin-bottom: 28px;
+  word-break: break-word;
+}
+
+.qr-img-wrap {
+  display: inline-block;
+  background: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 22px;
+  box-shadow: 0 0 40px rgba(0,245,255,.3), 0 0 80px rgba(255,45,120,.2);
+}
+
+#qrCanvas { display: block; }
+
+.scan-hint {
+  font-size: clamp(.65rem, 1.8vw, .8rem);
+  letter-spacing: .15em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.qr-url {
+  font-size: clamp(.55rem, 1.5vw, .7rem);
+  color: var(--pink);
+  word-break: break-all;
+  margin-bottom: 28px;
+}
+
+/* countdown bar */
+.countdown-wrap {
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border-radius: 3px;
+  height: 4px;
+  overflow: hidden;
+}
+.countdown-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pink), var(--cyan));
+  border-radius: 3px;
+  width: 100%;
+  transition: none;
+}
+
+.countdown-label {
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  margin-top: 6px;
+}
+
+/* history strip */
+#history {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+  padding: 10px 20px;
+  display: flex; gap: 12px; overflow-x: auto;
+  background: rgba(6,8,15,.9);
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+#history::-webkit-scrollbar { display: none; }
+
+.hist-item {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color .2s;
+  text-decoration: none; color: inherit;
+}
+.hist-item:hover { border-color: var(--cyan); }
+.hist-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; color: var(--pink);
+}
+.hist-info { display: flex; flex-direction: column; gap: 1px; }
+.hist-dj { font-family: 'Bebas Neue', sans-serif; font-size: .85rem; letter-spacing: .05em; }
+.hist-track { font-size: .55rem; color: var(--muted); letter-spacing: .05em; }
+
+/* ws status */
+#ws-status {
+  position: fixed; top: 16px; right: 16px; z-index: 20;
+  font-size: .6rem; letter-spacing: .1em;
+  display: flex; align-items: center; gap: 6px; color: var(--muted);
+}
+#ws-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted);
+}
+#ws-dot.live {
+  background: var(--green);
+  animation: blink 1.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+</style>
+</head>
+<body>
+
+<!-- 대기 화면 -->
+<div id="standby">
+  <div class="logo-title">LIVE SOUND<br>ARCHIVE</div>
+  <div class="logo-sub">DJ Card Generator — Live Session</div>
+  <div class="waiting-text">
+    녹음 대기 중
+    <div class="dot-anim">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+
+<!-- QR 표시 팝업 -->
+<div id="qr-display">
+  <div class="qr-card">
+    <div class="new-badge">🎵 NEW TRACK READY</div>
+    <div class="qr-dj-name" id="qDjName">법음</div>
+    <div class="qr-track" id="qTrack">TRACK NAME</div>
+    <div class="qr-img-wrap">
+      <div id="qrCanvas"></div>
+    </div>
+    <div class="scan-hint">📱 QR을 스캔하면 나만의 DJ 카드가 열립니다</div>
+    <div class="qr-url" id="qUrl"></div>
+    <div class="countdown-wrap">
+      <div class="countdown-bar" id="countBar"></div>
+    </div>
+    <div class="countdown-label" id="countLabel">30초 후 대기 화면으로</div>
+  </div>
+</div>
+
+<!-- 하단 히스토리 -->
+<div id="history"></div>
+
+<!-- 연결 상태 -->
+<div id="ws-status">
+  <div id="ws-dot"></div>
+  <span id="ws-text">연결 중...</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ========== 설정 ==========
+const WS_URL  = "wss://your-server.com"; // 서버 주소로 변경
+const QR_SHOW_SECONDS = 30;              // QR 표시 시간(초)
+// ==========================
+
+let countdownTimer = null;
+let cards = [];
+
+function connect() {
+  const ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    document.getElementById("ws-dot").classList.add("live");
+    document.getElementById("ws-text").textContent = "실시간 연결됨";
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "init") {
+      cards = msg.cards || [];
+      renderHistory();
+    } else if (msg.type === "new_card") {
+      cards.unshift(msg.card);
+      renderHistory();
+      showQR(msg.card);
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById("ws-dot").classList.remove("live");
+    document.getElementById("ws-text").textContent = "재연결 중...";
+    setTimeout(connect, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function showQR(card) {
+  clearTimeout(countdownTimer);
+
+  // QR 생성
+  const qrWrap = document.getElementById("qrCanvas");
+  qrWrap.innerHTML = "";
+  try {
+    new QRCode(qrWrap, {
+      text: card.cardUrl,
+      width: 200, height: 200,
+      colorDark: "#000000", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {}
+
+  document.getElementById("qDjName").textContent = card.djName.replace("DJ ","");
+  document.getElementById("qTrack").textContent  = card.trackName;
+  document.getElementById("qUrl").textContent    = card.cardUrl;
+
+  // 표시
+  document.getElementById("standby").style.display = "none";
+  document.getElementById("qr-display").classList.add("show");
+
+  // 카운트다운
+  let remaining = QR_SHOW_SECONDS;
+  const bar = document.getElementById("countBar");
+  const label = document.getElementById("countLabel");
+  bar.style.transition = "none";
+  bar.style.width = "100%";
+
+  setTimeout(() => {
+    bar.style.transition = `width ${QR_SHOW_SECONDS}s linear`;
+    bar.style.width = "0%";
+  }, 50);
+
+  const tick = setInterval(() => {
+    remaining--;
+    label.textContent = `${remaining}초 후 대기 화면으로`;
+    if (remaining <= 0) {
+      clearInterval(tick);
+      hideQR();
+    }
+  }, 1000);
+  countdownTimer = tick;
+
+  // 클릭으로 닫기
+  document.getElementById("qr-display").onclick = hideQR;
+}
+
+function hideQR() {
+  document.getElementById("qr-display").classList.remove("show");
+  document.getElementById("standby").style.display = "flex";
+}
+
+function renderHistory() {
+  const h = document.getElementById("history");
+  h.innerHTML = cards.slice(0, 20).map((c, i) => `
+    <a class="hist-item" href="${c.cardUrl}" target="_blank">
+      <div class="hist-num">${String(c.cardNumber).padStart(2,"0")}</div>
+      <div class="hist-info">
+        <div class="hist-dj">${c.djName}</div>
+        <div class="hist-track">${c.trackName.slice(0,20)}${c.trackName.length>20?"…":""}</div>
+      </div>
+    </a>
+  `).join("");
+}
+
+connect();
+</script>
+</body>
+</html>

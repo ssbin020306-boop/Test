@@ -1,0 +1,8 @@
+node_modules/
+uploads/
+cards.json
+*.mp3
+*.wav
+*.aif
+*.aiff
+.env
