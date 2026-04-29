@@ -192,9 +192,9 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
   <div class="sub">LIVE SOUND ARCHIVE — SESSION #${card.id.slice(-4).toUpperCase()}</div>
 </header>
 
-<div class="scene" id="card" onclick="flip()">
+<div class="scene" id="card">
   <div class="inner">
-    <div class="face front">
+    <div class="face front" onclick="flip()">
       <div class="bdr"></div>
       <div class="bg-txt">${card.djName.replace("DJ ","")}</div>
       <div class="top">
@@ -239,7 +239,7 @@ header{position:relative;z-index:1;text-align:center;margin-bottom:44px;}
           <div class="bk-ttl">TRACK INFO</div>
           <div class="bk-nm">${card.djName}</div>
         </div>
-        <div style="font-size:.5rem;color:var(--muted);text-align:right;line-height:2">NO.${String(card.cardNumber).padStart(2,"0")}<br>COLLECTOR</div>
+        <button onclick="flip()" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5);font-size:.6rem;letter-spacing:.1em;padding:4px 10px;cursor:pointer;border-radius:4px;font-family:'Space Mono',monospace;">↩ FLIP</button>
       </div>
       <div class="info">
         <div class="row"><div class="lbl">TRACK</div><div class="val hi">${card.trackName}</div></div>
